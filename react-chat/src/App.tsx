@@ -4,6 +4,7 @@ import { Chat, ChatConfig, Message } from './types';
 import { StorageService } from './services/storage';
 import { LMStudioAPI } from './services/api';
 import { MarkdownRenderer } from './components/MarkdownRenderer';
+import SquidGameBackground from './components/SquidGameBackground';
 import { clsx } from 'clsx';
 
 const App: React.FC = () => {
@@ -44,9 +45,19 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Auto-scroll to bottom
+  // Scroll to bottom function with throttling for performance
+  const scrollToBottom = (immediate = false) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: immediate ? 'auto' : 'smooth',
+        block: 'end'
+      });
+    }
+  };
+
+  // Auto-scroll to bottom when chats change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    scrollToBottom();
   }, [chats, currentChatId]);
 
   // Auto-resize textarea
@@ -94,6 +105,28 @@ const App: React.FC = () => {
     StorageService.saveChats(updatedChats);
   };
 
+  const deleteCurrentChat = () => {
+    if (!currentChatId) return;
+
+    const updatedChats = { ...chats };
+    delete updatedChats[currentChatId];
+    
+    // If there are other chats, switch to the first one
+    const remainingChatIds = Object.keys(updatedChats);
+    if (remainingChatIds.length > 0) {
+      const firstChatId = remainingChatIds[0];
+      setCurrentChatId(firstChatId);
+      StorageService.setCurrentChatId(firstChatId);
+      setChats(updatedChats);
+      StorageService.saveChats(updatedChats);
+    } else {
+      // If no chats left, create a new one
+      setChats({});
+      StorageService.saveChats({});
+      createNewChat();
+    }
+  };
+
   const sendMessage = async () => {
     if (!userInput.trim() || !config.model.trim() || isStreaming || !currentChatId) return;
 
@@ -127,6 +160,9 @@ const App: React.FC = () => {
     setUserInput('');
     setIsStreaming(true);
 
+    // Scroll to show user message immediately
+    setTimeout(() => scrollToBottom(true), 50);
+
     try {
       // Prepare messages for API
       const apiMessages = [];
@@ -154,6 +190,8 @@ const App: React.FC = () => {
 
       // Stream response
       let fullContent = '';
+      let scrollCounter = 0;
+      
       for await (const chunk of api.streamChatCompletion({
         model: config.model,
         messages: apiMessages,
@@ -173,6 +211,12 @@ const App: React.FC = () => {
 
         const finalUpdatedChats = { ...updatedChats, [currentChatId]: finalUpdatedChat };
         setChats(finalUpdatedChats);
+        
+        // Scroll to bottom frequently during streaming for better UX
+        scrollCounter++;
+        if (scrollCounter % 2 === 0) { // Every 2nd chunk for responsive scrolling
+          requestAnimationFrame(() => scrollToBottom(true));
+        }
       }
 
       // Save final state
@@ -182,6 +226,9 @@ const App: React.FC = () => {
         finalChats[currentChatId].updatedAt = new Date().toISOString();
         StorageService.saveChats(finalChats);
       }
+
+      // Final scroll to ensure we're at the bottom
+      requestAnimationFrame(() => scrollToBottom(true));
 
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -230,26 +277,13 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen relative overflow-hidden">
+      {/* Squid Game 3D Background */}
+      <SquidGameBackground />
+      
       {/* Floating background orbs for ambiance */}
       <div className="floating-orb w-64 h-64 top-10 left-10 opacity-20" style={{ animationDelay: '0s' }} />
       <div className="floating-orb w-48 h-48 top-1/2 right-20 opacity-15" style={{ animationDelay: '2s' }} />
       <div className="floating-orb w-32 h-32 bottom-20 left-1/3 opacity-25" style={{ animationDelay: '4s' }} />
-      
-      {/* 3D Animated Background Elements */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        {/* 3D Cubes */}
-        <div className="absolute top-[10%] left-[10%] w-16 h-16 bg-gradient-to-br from-purple-400/10 to-blue-500/10 backdrop-blur-sm border border-white/5 rounded-lg animate-cube3d" style={{ animationDelay: '0s' }} />
-        <div className="absolute top-[60%] right-[15%] w-12 h-12 bg-gradient-to-br from-pink-400/10 to-purple-500/10 backdrop-blur-sm border border-white/5 rounded-lg animate-cube3d" style={{ animationDelay: '2s' }} />
-        <div className="absolute bottom-[20%] left-[60%] w-20 h-20 bg-gradient-to-br from-blue-400/10 to-cyan-500/10 backdrop-blur-sm border border-white/5 rounded-lg animate-cube3d" style={{ animationDelay: '4s' }} />
-        
-        {/* 3D Triangles */}
-        <div className="absolute top-[30%] right-[30%] w-0 h-0 border-l-[15px] border-r-[15px] border-b-[25px] border-l-transparent border-r-transparent border-b-purple-400/20 animate-triangle3d" style={{ animationDelay: '1s' }} />
-        <div className="absolute bottom-[40%] left-[20%] w-0 h-0 border-l-[20px] border-r-[20px] border-b-[35px] border-l-transparent border-r-transparent border-b-blue-400/20 animate-triangle3d" style={{ animationDelay: '3s' }} />
-        
-        {/* 3D Hexagons */}
-        <div className="absolute top-[70%] left-[70%] w-14 h-14 bg-gradient-to-br from-cyan-400/10 to-teal-500/10 backdrop-blur-sm border border-white/5 rounded-full animate-hexagon3d" style={{ animationDelay: '1.5s' }} />
-        <div className="absolute top-[20%] left-[50%] w-10 h-10 bg-gradient-to-br from-indigo-400/10 to-purple-500/10 backdrop-blur-sm border border-white/5 rounded-full animate-hexagon3d" style={{ animationDelay: '2.5s' }} />
-      </div>
       
       {/* Floating sidebar toggle when hidden */}
       {!sidebarVisible && (
@@ -366,9 +400,9 @@ const App: React.FC = () => {
                 <Settings className="w-5 h-5" />
               </button>
               <button
-                onClick={clearCurrentChat}
+                onClick={deleteCurrentChat}
                 className="p-3 glass-button rounded-2xl focus-ring glass-text"
-                title="Clear Chat"
+                title="Delete Chat"
               >
                 <Trash2 className="w-5 h-5" />
               </button>
@@ -416,7 +450,7 @@ const App: React.FC = () => {
               <div className="glass-card p-12 rounded-3xl glass-glow">
                 <Bot className="w-16 h-16 mx-auto mb-6 glass-text opacity-80" />
                 <h2 className="text-2xl font-semibold glass-text mb-4">
-                  Welcome to LM Studio Chat
+                  Welcome to Le Trung Linh Chat
                 </h2>
                 <p className="glass-text opacity-70 text-lg">
                   Enter your model name above and start chatting!
@@ -497,9 +531,10 @@ const App: React.FC = () => {
               onChange={(e) => setUserInput(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="Type your message... (Enter to send, Shift+Enter for new line)"
-              className="flex-1 resize-none glass-input rounded-2xl px-6 py-4 focus-ring glass-text font-medium"
+              className="flex-1 resize-none glass-input rounded-2xl px-6 py-4 focus-ring glass-text font-medium shadow-2xl"
               rows={1}
               style={{ minHeight: '56px', maxHeight: '200px' }}
+              spellCheck={false}
             />
             <button
               onClick={sendMessage}

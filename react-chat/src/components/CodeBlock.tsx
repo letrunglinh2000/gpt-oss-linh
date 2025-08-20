@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { Copy, Download, ToggleLeft, ToggleRight, WrapText } from 'lucide-react';
+import { Copy, Download, ToggleLeft, ToggleRight, WrapText, Check } from 'lucide-react';
 import { clsx } from 'clsx';
 
 interface CodeBlockProps {
@@ -179,10 +179,39 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
 
   const copyToClipboard = async () => {
     try {
-      await navigator.clipboard.writeText(code);
-      setCopied(true);
+      // Modern Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(code);
+        setCopied(true);
+        return;
+      }
+      
+      // Fallback for older browsers or non-secure contexts
+      const textArea = document.createElement('textarea');
+      textArea.value = code;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          setCopied(true);
+        } else {
+          throw new Error('Copy command failed');
+        }
+      } finally {
+        document.body.removeChild(textArea);
+      }
     } catch (err) {
-      console.error('Failed to copy: ', err);
+      console.error('Failed to copy code:', err);
+      
+      // Show user-friendly error message
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      alert(`Failed to copy code. Please manually select and copy the text.\n\nError: ${errorMessage}`);
     }
   };
 
@@ -242,10 +271,18 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
           {/* Copy button */}
           <button
             onClick={copyToClipboard}
-            className="p-2 glass-button rounded-xl transition-all duration-300 glass-text"
-            title="Copy to clipboard"
+            className={clsx(
+              "p-2 glass-button rounded-xl transition-all duration-300 glass-text hover:scale-105 active:scale-95 relative",
+              copied ? "bg-green-500/20 border-green-400/30" : "hover:bg-white/10"
+            )}
+            title={copied ? "" : "Copy to clipboard"}
+            disabled={copied}
           >
-            <Copy className="w-4 h-4" />
+            {copied ? (
+              <Check className="w-4 h-4 text-green-400" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
           </button>
           
           {/* Download button */}
@@ -273,13 +310,6 @@ export const CodeBlock: React.FC<CodeBlockProps> = ({
               <HighlightedCode code={code} language={lang} />
             </code>
           </pre>
-        </div>
-      )}
-      
-      {/* Copy success indicator */}
-      {copied && (
-        <div className="absolute top-4 right-4 glass-card glass-glow px-3 py-2 rounded-xl text-sm glass-text font-medium">
-          Copied!
         </div>
       )}
     </div>

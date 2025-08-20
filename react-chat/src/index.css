@@ -20,6 +20,59 @@
     @apply backdrop-blur-md bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10 focus:border-white/40 dark:focus:border-white/20 placeholder:text-gray-400 dark:placeholder:text-gray-500;
   }
   
+  /* Enhanced glass styling for select elements */
+  select.glass-input {
+    backdrop-filter: blur(12px);
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: rgba(255, 255, 255, 0.9);
+  }
+  
+  select.glass-input option {
+    background: rgba(15, 23, 42, 0.95);
+    backdrop-filter: blur(8px);
+    color: rgba(255, 255, 255, 0.9);
+    border: none;
+    padding: 8px 12px;
+  }
+  
+  select.glass-input:focus {
+    border-color: rgba(255, 255, 255, 0.4);
+    background: rgba(255, 255, 255, 0.2);
+  }
+  
+  /* Enhanced glass styling for textarea elements */
+  textarea.glass-input {
+    backdrop-filter: blur(16px);
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.95);
+    box-shadow: 
+      0 8px 32px rgba(0, 0, 0, 0.3),
+      inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease;
+  }
+  
+  textarea.glass-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 400;
+  }
+  
+  textarea.glass-input:focus {
+    border-color: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.18);
+    box-shadow: 
+      0 12px 40px rgba(0, 0, 0, 0.4),
+      inset 0 1px 0 rgba(255, 255, 255, 0.25),
+      0 0 0 1px rgba(255, 255, 255, 0.1);
+    transform: translateY(-1px);
+  }
+  
+  textarea.glass-input:hover:not(:focus) {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.35);
+  }
+  
   .glass-sidebar {
     @apply backdrop-blur-2xl bg-white/15 dark:bg-black/15 border-r border-white/20 dark:border-white/10;
   }
